@@ -1,3 +1,4 @@
+
 package juloo.keyboard2;
 
 import android.content.ClipData;
@@ -116,8 +117,6 @@ public final class ClipboardHistoryService
     int size = _history.size();
     if (clip.equals("") || (size > 0 && _history.get(0).content.equals(clip)))
       return;
-    if (size >= MAX_HISTORY_SIZE)
-      _history.remove(size - 1);
     _history.add(0,new HistoryEntry(clip));
     if (_listener != null)
       _listener.on_clipboard_history_change();
