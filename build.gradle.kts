@@ -75,7 +75,7 @@ android {
       isShrinkResources = true
       isDebuggable = false
       resValue("string", "app_name", "@string/app_name_release")
-      signingConfig = signingConfigs["release"]
+      signingConfig = signingConfigs["debug"]
     }
 
     named("debug") {
