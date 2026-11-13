@@ -44,7 +44,7 @@ jobs:
 
     - name: Build debug APK
       run: |
-        gradle assembleDebug
+        gradle assembleRelease
         artifact="${{github.repository_owner}} ${{github.ref_name}}"
         artifact="${artifact//\//-}" # replace slashes
         echo "artifact=${artifact}" >> $GITHUB_ENV
@@ -58,7 +58,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: "${{env.artifact}} debug_apk"
-        path: build/outputs/apk/debug/*.apk
+        path: build/outputs/apk/release/*.apk
 
     - name: Check generated files
       run:

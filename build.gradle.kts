@@ -76,16 +76,14 @@ android {
       isShrinkResources = true
       isDebuggable = false
       resValue("string", "app_name", "@string/app_name_release")
-      signingConfig = signingConfigs["release"]
-      isCrunchPngs = false // Reproducibility
+      signingConfig = signingConfigs["debug"]
     }
 
     named("debug") {
       isMinifyEnabled = false
       isShrinkResources = false
       isDebuggable = true
-      applicationIdSuffix = ".debug"
-      resValue("string", "app_name", "@string/app_name_debug")
+      resValue("string", "app_name", "@string/app_name_release")
       resValue("bool", "debug_logs", "true")
       signingConfig = signingConfigs["debug"]
     }
