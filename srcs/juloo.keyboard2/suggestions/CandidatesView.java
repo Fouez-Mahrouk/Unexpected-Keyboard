@@ -41,6 +41,8 @@ public class CandidatesView extends LinearLayout
   boolean should_show_dictionary_switch = false;
 
   TextView _lang_name_view;
+  /** Dictionary name currently shown in [_lang_name_view]. */
+  String _shown_lang_name = null;
 
   public CandidatesView(Context context, AttributeSet attrs)
   {
@@ -85,6 +87,14 @@ public class CandidatesView extends LinearLayout
       (should_show_dictionary_switch && s.count == 0) ? View.VISIBLE : View.GONE;
     _dictionary_switch_button.setVisibility(dict_vis);
     _lang_name_view.setVisibility(dict_vis);
+    // The dictionary can change while typing (automatic language detection).
+    String lang = Config.globalConfig().current_dictionary_name;
+    if (lang != null && !lang.equals(_shown_lang_name))
+    {
+      _shown_lang_name = lang;
+      _lang_name_view.setText(
+          SupportedDictionaries.get(getResources()).get_display_name(lang));
+    }
   }
 
   void clear_candidates()
@@ -113,6 +123,7 @@ public class CandidatesView extends LinearLayout
     else
       _lang_name_view.setText(
           sd.get_display_name(config.current_dictionary_name));
+    _shown_lang_name = config.current_dictionary_name;
   }
 
   /** Set the height of the suggestion row and the text size. */
