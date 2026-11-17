@@ -35,6 +35,8 @@ public final class Suggestions
   final String[] _votes = new String[VOTE_WINDOW];
   int _vote_next = 0;
   String _known_dictionary = null;
+  /** Last word entered by tapping a suggestion. It has already voted. */
+  String _chosen_word = null;
   /** Number of recent words that are looked at. */
   static final int VOTE_WINDOW = 3;
   /** Votes needed to switch. */
@@ -58,6 +60,7 @@ public final class Suggestions
   {
     _enabled = _config.editor_config.should_show_candidates_view;
     _previous_word = "";
+    _chosen_word = null;
     clear();
   }
 
@@ -73,13 +76,36 @@ public final class Suggestions
     _callback.set_suggestions(this);
   }
 
+  /** A suggestion is about to replace the word being typed. The chosen word
+      counts as a finished word and the partial word it replaces is ignored. */
+  public void suggestion_chosen(String chosen)
+  {
+    _previous_word = "";
+    chosen = chosen.trim();
+    if (chosen.isEmpty() || !Character.isLetter(chosen.codePointAt(0)))
+      return;
+    _chosen_word = chosen;
+    register_finished_word(chosen);
+  }
+
   /** A word is finished when the typed word becomes empty. */
   void detect_language(String word)
   {
     String finished = _previous_word;
     _previous_word = word;
-    if (_dictionaries == null || !word.isEmpty()
-        || finished.length() < MIN_VOTE_WORD_LENGTH)
+    if (!word.isEmpty())
+      return;
+    if (finished.equals(_chosen_word)) // Already counted by [suggestion_chosen]
+    {
+      _chosen_word = null;
+      return;
+    }
+    register_finished_word(finished);
+  }
+
+  void register_finished_word(String finished)
+  {
+    if (_dictionaries == null || finished.length() < MIN_VOTE_WORD_LENGTH)
       return;
     // Forget old votes if the dictionary was changed by something else
     // (the language button, a layout switch).
