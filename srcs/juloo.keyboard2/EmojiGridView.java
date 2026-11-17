@@ -2,6 +2,8 @@ package juloo.keyboard2;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Paint;
+import android.os.Build.VERSION;
 import android.util.AttributeSet;
 import android.view.ContextThemeWrapper;
 import android.view.View;
@@ -54,8 +56,23 @@ public class EmojiGridView extends GridView
 
   public void setEmojiGroup(int group)
   {
-    _emojiArray = (group == GROUP_LAST_USE) ? getLastEmojis() : Emoji.getEmojisByGroup(group);
+    _emojiArray = keep_drawable_emojis(
+        (group == GROUP_LAST_USE) ? getLastEmojis() : Emoji.getEmojisByGroup(group));
     setAdapter(new EmojiViewAdpater(getContext(), _emojiArray));
+  }
+
+  /** Hide the emojis that this phone's fonts cannot draw. They would
+      otherwise show up as empty boxes. */
+  private static List<Emoji> keep_drawable_emojis(List<Emoji> emojis)
+  {
+    if (VERSION.SDK_INT < 23 || emojis == null)
+      return emojis;
+    Paint paint = new Paint();
+    List<Emoji> drawable = new ArrayList<Emoji>(emojis.size());
+    for (Emoji e : emojis)
+      if (paint.hasGlyph(e.kv().getString()))
+        drawable.add(e);
+    return drawable;
   }
 
   public void onItemClick(AdapterView<?> parent, View v, int pos, long id)
