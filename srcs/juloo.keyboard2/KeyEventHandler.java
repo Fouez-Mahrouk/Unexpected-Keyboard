@@ -138,6 +138,7 @@ public final class KeyEventHandler
 
   public void suggestion_entered(String text, boolean add_space_after)
   {
+    _suggestions.suggestion_chosen(text);
     if (add_space_after)
       text = text + " ";
     String old = _typedword.get();
