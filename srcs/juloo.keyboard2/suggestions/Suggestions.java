@@ -2,6 +2,7 @@ package juloo.keyboard2.suggestions;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import juloo.cdict.Cdict;
 import juloo.keyboard2.dict.Dictionaries;
 import juloo.keyboard2.Config;
@@ -25,15 +26,38 @@ public final class Suggestions
   /** Number of suggestions in [suggestions]. */
   public static final int MAX_COUNT = 3;
 
+  /** Automatic language detection. After each finished word, every installed
+      dictionary is asked whether it knows the word. A word known by exactly
+      one dictionary is a vote for that dictionary. When enough of the last
+      words vote for the same dictionary, it becomes the current one. */
+  Dictionaries _dictionaries = null;
+  String _previous_word = "";
+  final String[] _votes = new String[VOTE_WINDOW];
+  int _vote_next = 0;
+  String _known_dictionary = null;
+  /** Number of recent words that are looked at. */
+  static final int VOTE_WINDOW = 3;
+  /** Votes needed to switch. */
+  static final int VOTE_THRESHOLD = 2;
+  /** Shorter words never vote. */
+  static final int MIN_VOTE_WORD_LENGTH = 3;
+
   public Suggestions(Callback c, Config conf)
   {
     _callback = c;
     _config = conf;
   }
 
+  /** Enable automatic language detection. */
+  public void set_dictionaries(Dictionaries d)
+  {
+    _dictionaries = d;
+  }
+
   public void started()
   {
     _enabled = _config.editor_config.should_show_candidates_view;
+    _previous_word = "";
     clear();
   }
 
@@ -41,11 +65,78 @@ public final class Suggestions
   {
     if (!_enabled)
       return;
+    detect_language(word);
     if (word.length() < 2 || _config.current_dictionary == null)
       clear();
     else
       query_suggestions(word);
     _callback.set_suggestions(this);
+  }
+
+  /** A word is finished when the typed word becomes empty. */
+  void detect_language(String word)
+  {
+    String finished = _previous_word;
+    _previous_word = word;
+    if (_dictionaries == null || !word.isEmpty()
+        || finished.length() < MIN_VOTE_WORD_LENGTH)
+      return;
+    // Forget old votes if the dictionary was changed by something else
+    // (the language button, a layout switch).
+    String current = _config.current_dictionary_name;
+    if (!Objects.equals(current, _known_dictionary))
+    {
+      Arrays.fill(_votes, null);
+      _known_dictionary = current;
+    }
+    _votes[_vote_next] = language_of_word(finished);
+    _vote_next = (_vote_next + 1) % VOTE_WINDOW;
+    String winner = vote_winner();
+    if (winner != null && !winner.equals(current))
+    {
+      _dictionaries.set_current_dictionary(_config, winner);
+      _known_dictionary = winner;
+      Arrays.fill(_votes, null);
+    }
+  }
+
+  /** The only installed dictionary that knows the word. [null] if no
+      dictionary or several dictionaries know it. */
+  String language_of_word(String word)
+  {
+    String w = apply_substitutions(word.toLowerCase());
+    String found_in = null;
+    for (String name : _dictionaries.get_installed())
+    {
+      Cdict[] dicts = _dictionaries.load(name);
+      if (dicts == null)
+        continue;
+      Cdict main = Dictionaries.find_by_name(dicts, "main");
+      if (main == null || !main.find(w).found)
+        continue;
+      if (found_in != null)
+        return null;
+      found_in = name;
+    }
+    return found_in;
+  }
+
+  /** The dictionary with enough votes, or [null]. */
+  String vote_winner()
+  {
+    for (int i = 0; i < VOTE_WINDOW; i++)
+    {
+      String candidate = _votes[i];
+      if (candidate == null)
+        continue;
+      int n = 0;
+      for (int j = 0; j < VOTE_WINDOW; j++)
+        if (candidate.equals(_votes[j]))
+          n++;
+      if (n >= VOTE_THRESHOLD)
+        return candidate;
+    }
+    return null;
   }
 
   void clear()
