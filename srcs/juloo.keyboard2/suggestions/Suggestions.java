@@ -43,6 +43,10 @@ public final class Suggestions
   static final int VOTE_THRESHOLD = 2;
   /** Shorter words never vote. */
   static final int MIN_VOTE_WORD_LENGTH = 3;
+  /** A word known by several dictionaries votes for the one where it is more
+      frequent, if it is at least this much more frequent (frequencies range
+      from 0 to 15). */
+  static final int MIN_FREQ_MARGIN = 2;
 
   public Suggestions(Callback c, Config conf)
   {
@@ -126,25 +130,42 @@ public final class Suggestions
     }
   }
 
-  /** The only installed dictionary that knows the word. [null] if no
-      dictionary or several dictionaries know it. */
+  /** The installed dictionary that the word belongs to. A word known by a
+      single dictionary belongs to it. A word known by several dictionaries
+      belongs to the one where it is clearly more frequent. [null] if
+      unknown or unclear. */
   String language_of_word(String word)
   {
     String w = apply_substitutions(word.toLowerCase());
-    String found_in = null;
+    String best = null;
+    int best_freq = -1;
+    int second_freq = -1;
     for (String name : _dictionaries.get_installed())
     {
       Cdict[] dicts = _dictionaries.load(name);
       if (dicts == null)
         continue;
       Cdict main = Dictionaries.find_by_name(dicts, "main");
-      if (main == null || !main.find(w).found)
+      if (main == null)
         continue;
-      if (found_in != null)
-        return null;
-      found_in = name;
+      Cdict.Result r = main.find(w);
+      if (!r.found)
+        continue;
+      int f = main.freq(r.index);
+      if (f > best_freq)
+      {
+        second_freq = best_freq;
+        best_freq = f;
+        best = name;
+      }
+      else if (f > second_freq)
+        second_freq = f;
     }
-    return found_in;
+    if (best == null)
+      return null;
+    if (second_freq < 0 || best_freq - second_freq >= MIN_FREQ_MARGIN)
+      return best;
+    return null;
   }
 
   /** The dictionary with enough votes, or [null]. */
